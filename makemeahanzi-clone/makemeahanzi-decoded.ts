@@ -51,7 +51,7 @@ function get_aabb(strokes): AABB {
  * @returns 
  */
 function downsample_stroke(stroke, how_many_points_to_sample) {
-  var result_stroke = []
+  var result_stroke: Stroke = []
   var stroke_length = 0
   for (var i = 0; i < stroke.length - 1; i++)
     stroke_length += Math.sqrt(VectorFunctions.distance2(stroke[i], stroke[i + 1]))
@@ -82,12 +82,12 @@ function preprocess_strokes(strokes, h) {
   )
     throw new Error("Invalid medians list: " + JSON.stringify(strokes))
   var o = h.side_length,
-    aabb_after = func4(get_aabb(strokes), h.max_ratio, h.min_width),
-    s = [
-      [0, 0],
-      [h.side_length - 1, h.side_length - 1],
-    ],
-    c = createNormilizedProjectFunction(aabb_after, s)
+    aabb_after = func4(get_aabb(strokes), h.max_ratio, h.min_width)
+  let s: AABB = [
+    [0, 0],
+    [h.side_length - 1, h.side_length - 1],
+  ]
+  let c = createNormilizedProjectFunction(aabb_after, s)
   return strokes.map(n => {
     var a = downsample_stroke(n.map(c), h.points),
       e = VectorFunctions.subtract(a[a.length - 1], a[0]),
