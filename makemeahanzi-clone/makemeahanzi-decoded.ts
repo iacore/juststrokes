@@ -30,7 +30,7 @@ function createNormilizedProjectFunction(aabb0: AABB, aabb1: AABB): (x: Point) =
   ]
 }
 
-type AABB = [Point, Point]
+export type AABB = [Point, Point]
 
 function get_aabb(strokes): AABB {
   var p_min: Point = [1 / 0, 1 / 0]
@@ -98,7 +98,7 @@ function preprocess_strokes(strokes, h) {
   })
 }
 
-type Point = [number, number]
+export type Point = [number, number]
 
 function func4(aabb: AABB, max_ratio: number, min_width: number) {
   aabb = aabb.map(VectorFunctions.round) as AABB
@@ -138,11 +138,11 @@ function func6(t, n, r) {
 }
 
 /** CJK Character */
-type Ideograph = string
+export type Ideograph = string
 
-type Stroke = Point[]
+export type Stroke = Point[]
 
-class Matcher {
+export class Matcher {
   private _params: {
     points: number,
     max_ratio: number,
@@ -166,10 +166,10 @@ class Matcher {
     return preprocess_strokes(strokes, this._params)
   }
 
-  match(strokes: Stroke[], n = 1) {
+  match(strokes: Stroke[], how_many_candidates = 1) {
     if (0 === strokes.length) return []
     let candidates: Ideograph[] = []
-    let a: number[] = []
+    let scores: number[] = []
     strokes = this.preprocess(strokes)
     var codepoint_like = 0
     while (true) {
@@ -177,15 +177,15 @@ class Matcher {
       let candidate = this._medians[codepoint_like++]
       if (candidate[1].length === strokes.length) {
         for (
-          var c = func6(strokes, candidate[1], this._params), f = a.length;
-          f > 0 && c > a[f - 1];
+          var c = func6(strokes, candidate[1], this._params), f = scores.length;
+          f > 0 && c > scores[f - 1];
 
         )
           f -= 1
-        n > f &&
+        how_many_candidates > f &&
           (candidates.splice(f, 0, candidate[0]),
-            a.splice(f, 0, c),
-            candidates.length > n && (candidates.pop(), a.pop()))
+            scores.splice(f, 0, c),
+            candidates.length > how_many_candidates && (candidates.pop(), scores.pop()))
       }
     }
     return candidates
