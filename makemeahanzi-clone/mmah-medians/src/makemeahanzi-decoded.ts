@@ -142,6 +142,8 @@ export type Ideograph = string
 
 export type Stroke = Point[]
 
+export type Medians = Uint8Array[2]
+
 export class Matcher {
   private _params: {
     points: number,
@@ -149,7 +151,7 @@ export class Matcher {
     max_width: number,
     side_length: number,
   }
-  private _medians: Array<[Ideograph, Array<Array<Point>>]>
+  private _medians: Array<[Ideograph, Medians]>
 
   constructor(medians, params) {
     this._medians = medians

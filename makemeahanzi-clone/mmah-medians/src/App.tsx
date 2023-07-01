@@ -66,13 +66,14 @@ function App() {
   function tryMatch() {
     const _matcher = matcher()
     if (_matcher) {
-      setCandidates(_matcher.match(strokes().map(o => o.map(p => [p[0] / 400, p[1] / 400])), 1))
+      // setCandidates(_matcher.match(strokes().map(o => o.map(p => [p[0] / 400, p[1] / 400])), 1))
+      setCandidates(_matcher.match(strokes()), 8)
     }
   }
 
   return (
     <div class="App">
-      <canvas width="400" height="400" ref={canvas} />
+      <canvas width="512" height="512" ref={canvas} />
       <div>
         <button onClick={() => setStrokes([])}>Clear</button>
         <button onClick={tryMatch}>Match</button>
