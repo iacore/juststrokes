@@ -3,7 +3,7 @@ import { createEffect, createRenderEffect, createSignal, onMount } from 'solid-j
 import './App.css'
 import { Matcher, Stroke } from './makemeahanzi-decoded'
 
-import medians_url from './graphics.json?url'
+const medians_promise = (async () => await (await fetch('graphics.json')).json())()
 
 function App() {
   let el_canvas: HTMLCanvasElement = undefined!
@@ -21,12 +21,10 @@ function App() {
       setStrokes([...ss, []])
       onPointerMove(evt)
     }
-    el_canvas.addEventListener("pointerdown", onPointerDown)
     const onPointerUp = (evt: PointerEvent) => {
       onPointerMove(evt)
       ispointerdown = false
     }
-    el_canvas.addEventListener("pointerup", onPointerUp)
     const onPointerMove = (evt: PointerEvent): void => {
       if (!ispointerdown) return
       let ss = [...strokes()]
@@ -36,8 +34,10 @@ function App() {
       }
       setStrokes(ss)
     }
+    el_canvas.addEventListener("pointerdown", onPointerDown)
+    el_canvas.addEventListener("pointerup", onPointerUp)
     el_canvas.addEventListener("pointermove", onPointerDown)
-    
+
     createRenderEffect(() => {
       const _strokes = strokes()
       const ctx = el_canvas.getContext("2d")!
@@ -60,8 +60,7 @@ function App() {
   })
 
   createEffect(async () => {
-    const medians = await (await fetch(medians_url)).json()
-    setMatcher(new Matcher(medians, {}))
+    setMatcher(new Matcher(await medians_promise, {}))
   })
 
   createEffect(() => {
@@ -73,6 +72,7 @@ function App() {
 
   return (
     <div class="App">
+      <h1>Recognize Hanzi from Handwriting</h1>
       <canvas width="512" height="512" ref={el_canvas} />
       <div>
         <button onClick={() => setStrokes([])}>Clear</button>
