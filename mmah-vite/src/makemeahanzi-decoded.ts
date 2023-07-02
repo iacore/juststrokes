@@ -144,23 +144,26 @@ export type Stroke = Point[]
 
 export type Medians = Uint8Array[2]
 
+export type MatcherOptions = {
+  points: number
+  max_ratio: number
+  max_width: number
+  side_length: number
+}
+
 export class Matcher {
-  private _params: {
-    points: number,
-    max_ratio: number,
-    max_width: number,
-    side_length: number,
-  }
+  private _params: MatcherOptions
+  /** Magic sauce */
   private _medians: Array<[Ideograph, Medians]>
 
-  constructor(medians, params) {
+  constructor(medians: Array<[Ideograph, Medians]>, options?: Partial<MatcherOptions>) {
     this._medians = medians
     this._params = {
       points: 4,
       max_ratio: 1,
       max_width: 8,
       side_length: 256,
-      ...params
+      ...options
     }
   }
 
