@@ -1,20 +1,16 @@
 const VectorFunctions = {
-  distance2(p0, p1) {
+  distance2(p0: Point, p1: Point) {
     return VectorFunctions.norm2(VectorFunctions.subtract(p0, p1))
   },
-  norm2(p) {
+  norm2(p: Point) {
     return p[0] * p[0] + p[1] * p[1]
   },
   round(p: Point): Point {
     return p.map(Math.round) as Point
   },
-  subtract(p0, p1) {
+  subtract(p0: Point, p1: Point): Point {
     return [p0[0] - p1[0], p0[1] - p1[1]]
   },
-}
-
-function orDefault(maybe_null, dflt) {
-  return null == maybe_null ? dflt : maybe_null
 }
 
 /** 
@@ -32,7 +28,7 @@ function createNormilizedProjectFunction(aabb0: AABB, aabb1: AABB): (x: Point) =
 
 export type AABB = [Point, Point]
 
-function get_aabb(strokes): AABB {
+function get_aabb(strokes: Stroke[]): AABB {
   var p_min: Point = [1 / 0, 1 / 0]
   var p_max: Point = [-(1 / 0), -(1 / 0)]
   return strokes.map(points => points.map(point => {
@@ -44,13 +40,8 @@ function get_aabb(strokes): AABB {
     [p_min, p_max]
 }
 
-/**
- * 
- * @param {points} stroke 
- * @param {integer} how_many_points_to_sample 
- * @returns 
- */
-function downsample_stroke(stroke, how_many_points_to_sample) {
+/** downsample and append 2 number metrics */
+function process_stroke(stroke: Stroke, how_many_points_to_sample: number): Stroke {
   var result_stroke: Stroke = []
   var stroke_length = 0
   for (var i = 0; i < stroke.length - 1; i++)
@@ -75,32 +66,42 @@ function downsample_stroke(stroke, how_many_points_to_sample) {
   return result_stroke
 }
 
-function preprocess_strokes(strokes, h) {
+const NUM_POSSIBLE_ENCODED_VALUE = 256
+
+function preprocess_strokes(strokes: Stroke[], opts: MatcherOptions): StrokeProcessed[] {
   if (
     0 === strokes.length ||
     strokes.some(t => 0 === t.length)
   )
     throw new Error("Invalid medians list: " + JSON.stringify(strokes))
-  var o = h.side_length,
-    aabb_after = func4(get_aabb(strokes), h.max_ratio, h.min_width)
+  const side_length = NUM_POSSIBLE_ENCODED_VALUE
+  const aabb_after = do_something_to_aabb(get_aabb(strokes), opts.max_ratio, opts.min_width)
   let s: AABB = [
     [0, 0],
-    [h.side_length - 1, h.side_length - 1],
+    [NUM_POSSIBLE_ENCODED_VALUE - 1, NUM_POSSIBLE_ENCODED_VALUE - 1],
   ]
   let c = createNormilizedProjectFunction(aabb_after, s)
   return strokes.map(n => {
-    var a = downsample_stroke(n.map(c), h.points),
-      e = VectorFunctions.subtract(a[a.length - 1], a[0]),
-      i = Math.atan2(e[1], e[0]),
-      u = Math.round(((i + Math.PI) * o) / (2 * Math.PI)) % o,
-      s = Math.round(Math.sqrt(VectorFunctions.norm2(e) / 2))
-    return [].concat.apply([], a).concat([u, s])
+    const stroke_processed = process_stroke(n.map(c), NUM_ENCODED_POINTS)
+    const stroke_span = VectorFunctions.subtract(stroke_processed[stroke_processed.length - 1], stroke_processed[0])
+    const stroke_angle = Math.atan2(stroke_span[1], stroke_span[0])
+    /**
+     * when stroke_angle == -PI, metric_u = 0
+     * when stroke_angle == PI, metric_u = 256 (side_length)
+     * basically, it's encoding angle to u8
+     */
+    const angle_encoded = Math.round(
+      ((stroke_angle + Math.PI) * side_length) / (2 * Math.PI)
+    ) % side_length
+    const length_encoded = Math.round(Math.sqrt(VectorFunctions.norm2(stroke_span) / 2))
+    return [...stroke_processed.flat(), angle_encoded, length_encoded]
   })
 }
 
 export type Point = [number, number]
 
-function func4(aabb: AABB, max_ratio: number, min_width: number) {
+/** not sure what this does */
+function do_something_to_aabb(aabb: AABB, max_ratio: number, min_width: number) {
   aabb = aabb.map(VectorFunctions.round) as AABB
   var e = VectorFunctions.subtract(aabb[1], aabb[0])
   if (e[0] < 0 || e[1] < 0) throw e
@@ -123,18 +124,25 @@ function func4(aabb: AABB, max_ratio: number, min_width: number) {
   return aabb
 }
 
-function func6(t, n, r) {
-  var e = 0, i = r.points
-  for (var h = 0; h < t.length; h++) {
-    var o = t[h], u = n[h]
-    for (var s = 0; i > s; s++)
-      (e -= Math.abs(o[2 * s] - u[2 * s])),
-        (e -= Math.abs(o[2 * s + 1] - u[2 * s + 1]))
-    var c = Math.abs(o[2 * i] - u[2 * i]),
-      f = (o[2 * i + 1] + u[2 * i + 1]) / r.side_length
-    e -= 4 * i * f * Math.min(c, r.side_length - c)
+function score_similarity(input: StrokeProcessed[], reference: StrokeProcessed[]): number {
+  var score = 0
+  for (var i = 0; i < input.length; i++) {
+    var input_stroke = input[i], ref_stroke = reference[i]
+    for (var s = 0; s < NUM_ENCODED_POINTS; s++) {
+      score -= Math.abs(input_stroke[2 * s] - ref_stroke[2 * s])
+      score -= Math.abs(input_stroke[2 * s + 1] - ref_stroke[2 * s + 1])
+    }
+    const c = Math.abs(input_stroke[2 * NUM_ENCODED_POINTS] - ref_stroke[2 * NUM_ENCODED_POINTS])
+    const angle_similarity = Math.min(c, NUM_POSSIBLE_ENCODED_VALUE - c)
+    const lengthy = (input_stroke[2 * NUM_ENCODED_POINTS + 1] + ref_stroke[2 * NUM_ENCODED_POINTS + 1]) / NUM_POSSIBLE_ENCODED_VALUE
+
+    // // this is my addition. it didn't help
+    // const length_diff = Math.abs(input_stroke[2 * NUM_ENCODED_POINTS + 1] - ref_stroke[2 * NUM_ENCODED_POINTS + 1])
+
+    const MAGIC_PER_STROKE_WEIGHT = 4
+    score -= MAGIC_PER_STROKE_WEIGHT * NUM_ENCODED_POINTS * lengthy * angle_similarity
   }
-  return e
+  return score
 }
 
 /** CJK Character */
@@ -142,27 +150,26 @@ export type Ideograph = string
 
 export type Stroke = Point[]
 
-export type Medians = Uint8Array[2]
+const NUM_ENCODED_POINTS = 4
+/** x0,y0,x1,y1,x2,y2,x3,y3,angle_encoded,length_encoded */
+export type StrokeProcessed = [...(number[] & { length: typeof NUM_ENCODED_POINTS }), number, number]
 
 export type MatcherOptions = {
-  points: number
   max_ratio: number
-  max_width: number
-  side_length: number
+  /** also called `max_width` once in source code */
+  min_width: number
 }
 
 export class Matcher {
   private _params: MatcherOptions
   /** Magic sauce */
-  private _medians: Array<[Ideograph, Medians]>
+  private _medians: Array<[Ideograph, StrokeProcessed[]]>
 
-  constructor(medians: Array<[Ideograph, Medians]>, options?: Partial<MatcherOptions>) {
+  constructor(medians: Array<[Ideograph, StrokeProcessed[]]>, options?: Partial<MatcherOptions>) {
     this._medians = medians
     this._params = {
-      points: 4,
       max_ratio: 1,
-      max_width: 8,
-      side_length: 256,
+      min_width: 8,
       ...options
     }
   }
@@ -175,21 +182,21 @@ export class Matcher {
     if (0 === strokes.length) return []
     let candidates: Ideograph[] = []
     let scores: number[] = []
-    strokes = this.preprocess(strokes)
+    const strokes2 = this.preprocess(strokes)
     var codepoint_like = 0
     while (true) {
       if (codepoint_like >= this._medians.length) break
       let candidate = this._medians[codepoint_like++]
-      if (candidate[1].length === strokes.length) {
+      if (candidate[1].length === strokes2.length) {
         for (
-          var c = func6(strokes, candidate[1], this._params), f = scores.length;
-          f > 0 && c > scores[f - 1];
+          var score = score_similarity(strokes2, candidate[1]), f = scores.length;
+          f > 0 && score > scores[f - 1];
 
         )
           f -= 1
         how_many_candidates > f &&
           (candidates.splice(f, 0, candidate[0]),
-            scores.splice(f, 0, c),
+            scores.splice(f, 0, score),
             candidates.length > how_many_candidates && (candidates.pop(), scores.pop()))
       }
     }

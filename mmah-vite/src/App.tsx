@@ -20,7 +20,7 @@ function App() {
     setStrokes([...ss, []])
     onPointerMove(evt)
   }
-  const onPointerUp = (evt: PointerEvent) => {
+  const onPointerUp = (_evt: PointerEvent) => {
     ispointerdown = false
   }
   const onPointerMove = (evt: PointerEvent): void => {
