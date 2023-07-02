@@ -1,7 +1,7 @@
 import { createEffect, createRenderEffect, createSignal, onMount } from 'solid-js'
 // import solidLogo from './assets/solid.svg'
 import './App.css'
-import { Matcher, Stroke } from './makemeahanzi-decoded'
+import { Matcher, Stroke } from './mmah'
 
 const medians_promise = (async () => await (await fetch('graphics.json')).json())()
 

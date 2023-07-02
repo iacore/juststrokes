@@ -167,7 +167,7 @@ export class Matcher {
     }
   }
 
-  preprocess(strokes) {
+  preprocess(strokes: Stroke[]) {
     return preprocess_strokes(strokes, this._params)
   }
 
