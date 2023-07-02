@@ -13,30 +13,31 @@ function App() {
   const [matcher, setMatcher] = createSignal<Matcher>()
   const [candidates, setCandidates] = createSignal<string[]>([])
 
+  let ispointerdown = false
+  const onPointerDown = (evt: PointerEvent) => {
+    ispointerdown = true
+    let ss = strokes()
+    setStrokes([...ss, []])
+    onPointerMove(evt)
+  }
+  const onPointerUp = (evt: PointerEvent) => {
+    ispointerdown = false
+  }
+  const onPointerMove = (evt: PointerEvent): void => {
+    if (!ispointerdown) return
+    let ss = [...strokes()]
+    if (ss.length >= 1) {
+      console.log(evt)
+      ss[ss.length - 1].push([evt.offsetX, evt.offsetY])
+    }
+    setStrokes(ss)
+  }
+
   onMount(async () => {
-    let ispointerdown = false
-    const onPointerDown = (evt: PointerEvent) => {
-      ispointerdown = true
-      let ss = strokes()
-      setStrokes([...ss, []])
-      onPointerMove(evt)
-    }
-    const onPointerUp = (evt: PointerEvent) => {
-      onPointerMove(evt)
-      ispointerdown = false
-    }
-    const onPointerMove = (evt: PointerEvent): void => {
-      if (!ispointerdown) return
-      let ss = [...strokes()]
-      if (ss.length >= 1) {
-        console.log(evt)
-        ss[ss.length - 1].push([evt.offsetX, evt.offsetY])
-      }
-      setStrokes(ss)
-    }
     el_canvas.addEventListener("pointerdown", onPointerDown)
     el_canvas.addEventListener("pointerup", onPointerUp)
-    el_canvas.addEventListener("pointermove", onPointerDown)
+    el_canvas.addEventListener("pointerleave", onPointerUp)
+    el_canvas.addEventListener("pointermove", onPointerMove)
 
     createRenderEffect(() => {
       const _strokes = strokes()
@@ -73,9 +74,12 @@ function App() {
   return (
     <div class="App">
       <h1>Recognize Hanzi from Handwriting</h1>
-      <canvas width="512" height="512" ref={el_canvas} />
+      <canvas width="400" height="400" ref={el_canvas} />
       <div>
-        <button onClick={() => setStrokes([])}>Clear</button>
+        <button onClick={() => {
+          ispointerdown=false
+          setStrokes([])
+        }}>Clear</button>
       </div>
       <details>
         <summary>Debug</summary>
